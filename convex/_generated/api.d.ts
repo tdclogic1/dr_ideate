@@ -10,10 +10,8 @@
 
 import type * as ideas from "../ideas.js";
 import type * as lib_enums from "../lib/enums.js";
-import type * as lib_gateway from "../lib/gateway.js";
 import type * as lib_ideas from "../lib/ideas.js";
 import type * as lib_owner from "../lib/owner.js";
-import type * as lib_platformStatus from "../lib/platformStatus.js";
 import type * as lib_prompt from "../lib/prompt.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as profiles from "../profiles.js";
@@ -38,10 +36,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   ideas: typeof ideas;
   "lib/enums": typeof lib_enums;
-  "lib/gateway": typeof lib_gateway;
   "lib/ideas": typeof lib_ideas;
   "lib/owner": typeof lib_owner;
-  "lib/platformStatus": typeof lib_platformStatus;
   "lib/prompt": typeof lib_prompt;
   "lib/validators": typeof lib_validators;
   profiles: typeof profiles;

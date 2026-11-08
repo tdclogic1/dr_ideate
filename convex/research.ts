@@ -1,57 +1,82 @@
-// The research run: ONE gateway dispatch with web tools, parsed into idea rows.
-// All AI goes through the 2030 gateway (POST /v1/agents/dispatch) with the key
-// from Convex env — never a provider call, never a key in this repo.
+"use node";
+// The research run: one Claude call with web search + web fetch, parsed into idea rows.
+// The API key lives on the Convex deployment (npx convex env set ANTHROPIC_API_KEY …),
+// never in this repo or the browser.
+import Anthropic from "@anthropic-ai/sdk";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
-import { gatewayRequest } from "./lib/gateway";
-import { platformStatus } from "./lib/platformStatus";
-import { OWNER_KEY } from "./lib/owner";
 import { parseIdeas } from "./lib/ideas";
-import { DEFAULT_AGENT_KEY, DEFAULT_MAX_TOKENS, DEFAULT_SKILL, IDEA_OUTPUT_SCHEMA, buildResearchPrompt } from "./lib/prompt";
+import { DEFAULT_EFFORT, DEFAULT_MODEL, buildResearchPrompt, type Effort, isEffort } from "./lib/prompt";
 import type { RunContext } from "./runs";
 
-type DispatchReply = { ok?: boolean; reason?: string; output?: unknown; model?: string; stub?: boolean };
+const SYSTEM =
+  "You are a YouTube content strategist who researches before recommending. Use web search to find what is current, and web fetch to read the creator's sources. Reply with the JSON object requested and nothing else.";
 
 export const execute = internalAction({
   args: { runId: v.id("researchRuns") },
-  handler: async (ctx, { runId }) => {
-    const fail = (error: string) => ctx.runMutation(internal.runs.fail, { runId, error });
+  handler: async (ctx, { runId }): Promise<void> => {
+    // Explicit return types break the type cycle runs.ts → api → research.ts → runs.ts.
+    const fail = async (error: string): Promise<void> => {
+      await ctx.runMutation(internal.runs.fail, { runId, error });
+    };
     const c: RunContext = await ctx.runQuery(internal.runs.loadContext, { runId });
     if (!c.run) return;
     if (!c.profile) return fail("No preferences saved yet.");
 
-    const agentKey = process.env.IDEATE_AGENT_KEY ?? DEFAULT_AGENT_KEY;
-    const skill = process.env.IDEATE_SKILL ?? DEFAULT_SKILL;
-    const maxTokens = Number(process.env.IDEATE_MAX_TOKENS ?? DEFAULT_MAX_TOKENS);
-    await ctx.runMutation(internal.runs.markRunning, { runId, agentKey });
+    const model = process.env.IDEATE_MODEL ?? DEFAULT_MODEL;
+    const effortEnv = process.env.IDEATE_EFFORT;
+    const effort: Effort = effortEnv && isEffort(effortEnv) ? effortEnv : DEFAULT_EFFORT;
+    await ctx.runMutation(internal.runs.markRunning, { runId, model });
 
-    const base = process.env.PLATFORM_API_URL;
-    const key = process.env.PLATFORM_SERVICE_KEY;
-    const status = platformStatus(base, key);
-    if (!status.connected) return fail(`${status.message}. Set PLATFORM_API_URL and PLATFORM_SERVICE_KEY with \`npx convex env set\`.`);
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return fail("ANTHROPIC_API_KEY is not set on the Convex deployment. Run: npx convex env set ANTHROPIC_API_KEY <key>");
+    }
+    const client = new Anthropic();
 
     try {
       const prompt = buildResearchPrompt(c.profile, c.sources, c.run.focus);
-      const r = await gatewayRequest(base!, key!, "POST", "/v1/agents/dispatch", {
-        agentKey,
-        skill,
-        input: prompt,
-        maxTokens,
-        tools: ["web_search", "web_scrape"],
-        outputSchema: IDEA_OUTPUT_SCHEMA,
-        subject: OWNER_KEY,
-      });
-      if (!r.ok) return fail(r.error);
-      const d = r.data as DispatchReply;
-      if (d.ok === false) return fail(`dispatch refused: ${d.reason ?? "no reason given"} (is ${agentKey} registered for this key?)`);
-      if (d.stub) return fail("the gateway returned a stub reply — the platform rail is not fully provisioned");
-      const text = typeof d.output === "string" ? d.output : JSON.stringify(d.output ?? "");
-      if (!text.trim()) return fail(`${agentKey} returned an empty reply`);
+      const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: prompt }];
+      let message: Anthropic.Beta.BetaMessage;
+      // Server tools can pause a long turn (stop_reason "pause_turn"); resume until the model finishes.
+      for (let turn = 0; ; turn++) {
+        message = await client.beta.messages
+          .stream({
+            model,
+            max_tokens: 16000,
+            system: SYSTEM,
+            output_config: { effort },
+            betas: ["server-side-fallback-2026-07-01"],
+            fallbacks: "default",
+            tools: [
+              { type: "web_search_20260209", name: "web_search", max_uses: 8 },
+              { type: "web_fetch_20260209", name: "web_fetch", max_uses: 6, max_content_tokens: 20000 },
+            ],
+            messages,
+          })
+          .finalMessage();
+        if (message.stop_reason !== "pause_turn" || turn >= 4) break;
+        messages.push({ role: "assistant", content: message.content });
+      }
+
+      if (message.stop_reason === "refusal") {
+        const why = message.stop_details?.explanation ?? message.stop_details?.category ?? "no reason given";
+        return fail(`the model declined this request: ${why}`);
+      }
+      if (message.stop_reason === "max_tokens") return fail("the reply was cut off at the token limit; try a narrower focus");
+
+      const text = message.content
+        .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
+        .map((b) => b.text)
+        .join("\n");
+      if (!text.trim()) return fail("the model returned no text");
       const parsed = parseIdeas(text);
       if (parsed.ideas.length === 0) return fail(`no ideas could be read from the reply: ${parsed.problems.join("; ")}`);
-      await ctx.runMutation(internal.runs.complete, { runId, ideas: parsed.ideas, model: d.model, problems: parsed.problems });
+      await ctx.runMutation(internal.runs.complete, { runId, ideas: parsed.ideas, model: message.model, problems: parsed.problems });
     } catch (e) {
+      if (e instanceof Anthropic.AuthenticationError) return fail("ANTHROPIC_API_KEY was rejected — check the key on the Convex deployment");
+      if (e instanceof Anthropic.RateLimitError) return fail("rate limited by the API — try again in a minute");
+      if (e instanceof Anthropic.APIError) return fail(`API error ${e.status ?? ""}: ${e.message}`.trim());
       await fail(e instanceof Error ? e.message : String(e));
     }
   },

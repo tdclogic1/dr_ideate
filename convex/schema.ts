@@ -35,7 +35,6 @@ export default defineSchema({
     focus: v.optional(v.string()),
     ideaCount: v.number(),
     attempts: v.number(),
-    agentKey: v.optional(v.string()),
     model: v.optional(v.string()),
     error: v.optional(v.string()),
     warning: v.optional(v.string()),

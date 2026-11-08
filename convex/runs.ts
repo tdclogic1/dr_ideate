@@ -53,12 +53,12 @@ export const loadContext = internalQuery({
 });
 
 export const markRunning = internalMutation({
-  args: { runId: v.id("researchRuns"), agentKey: v.string() },
-  handler: async (ctx, { runId, agentKey }) => {
+  args: { runId: v.id("researchRuns"), model: v.string() },
+  handler: async (ctx, { runId, model }) => {
     const run = await ctx.db.get(runId);
     if (!run) return;
     const now = Date.now();
-    await ctx.db.patch(runId, { status: "running", attempts: run.attempts + 1, agentKey, startedAt: now, updatedAt: now });
+    await ctx.db.patch(runId, { status: "running", attempts: run.attempts + 1, model, startedAt: now, updatedAt: now });
   },
 });
 

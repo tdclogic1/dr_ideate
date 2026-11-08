@@ -1,0 +1,136 @@
+/* dr_ideate — app theme. Three-block contract: bare :root carries the full
+ * light palette; the media query and [data-theme] blocks redefine only what
+ * changes. App classes are prefixed `ideate-`. */
+
+:root {
+  --bg: #f7f6f2;
+  --surface: #ffffff;
+  --surface-2: #f0eee8;
+  --text: #1b1d21;
+  --muted: #5c6068;
+  --border: #dcd9d1;
+  --accent: #c8461f;
+  --accent-ink: #ffffff;
+  --star: #d98a00;
+  --ok: #1f7a4d;
+  --error: #b42318;
+  --radius: 10px;
+  --shadow: 0 1px 2px rgb(0 0 0 / 6%);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131417;
+    --surface: #1c1e23;
+    --surface-2: #24272d;
+    --text: #e9e9e6;
+    --muted: #a0a4ad;
+    --border: #33363d;
+    --accent: #ff7a4d;
+    --accent-ink: #1b1d21;
+    --star: #f2b544;
+    --ok: #5fcf96;
+    --error: #ff7b72;
+    --shadow: 0 1px 2px rgb(0 0 0 / 40%);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131417;
+  --surface: #1c1e23;
+  --surface-2: #24272d;
+  --text: #e9e9e6;
+  --muted: #a0a4ad;
+  --border: #33363d;
+  --accent: #ff7a4d;
+  --accent-ink: #1b1d21;
+  --star: #f2b544;
+  --ok: #5fcf96;
+  --error: #ff7b72;
+  --shadow: 0 1px 2px rgb(0 0 0 / 40%);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+a { color: var(--accent); }
+button { font: inherit; cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: 0.55; }
+input, textarea { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0.55rem 0.7rem; width: 100%; }
+input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { line-height: 1.2; margin: 0 0 0.4rem; }
+h1 { font-size: 1.5rem; letter-spacing: -0.01em; }
+h2 { font-size: 1.25rem; margin-bottom: 0.25rem; }
+h3 { font-size: 1.05rem; }
+
+.ideate-shell { max-width: 72rem; margin: 0 auto; padding: 1.25rem 16px 4rem; }
+.ideate-header { display: flex; flex-wrap: wrap; gap: 1rem 2rem; align-items: flex-end; justify-content: space-between; padding-bottom: 1rem; border-bottom: 1px solid var(--border); margin-bottom: 1.25rem; }
+.ideate-tagline { margin: 0; color: var(--muted); }
+.ideate-tabs { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.ideate-tabs button { background: transparent; border: 1px solid transparent; color: var(--muted); padding: 0.45rem 0.8rem; border-radius: 999px; }
+.ideate-tabs button:hover { color: var(--text); background: var(--surface-2); }
+.ideate-tabs button.is-active { color: var(--text); background: var(--surface); border-color: var(--border); box-shadow: var(--shadow); }
+
+.ideate-primary { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 8px; padding: 0.6rem 1.1rem; font-weight: 600; }
+.ideate-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 6px; padding: 0.3rem 0.6rem; }
+.ideate-ghost:hover { color: var(--error); border-color: var(--error); }
+.ideate-link { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; }
+.ideate-muted { color: var(--muted); }
+.ideate-empty { color: var(--muted); padding: 2rem 1rem; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius); }
+.ideate-error { color: var(--error); margin: 0.5rem 0; }
+.ideate-ok { color: var(--ok); }
+.ideate-note-line { margin: 0.25rem 0 0.75rem; color: var(--muted); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.ideate-runbar { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+.ideate-runbar input { flex: 1 1 18rem; }
+.ideate-run { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center; font-size: 0.92rem; color: var(--muted); background: var(--surface-2); border-radius: 8px; padding: 0.55rem 0.8rem; margin-bottom: 1rem; }
+.ideate-run-failed { color: var(--error); }
+.ideate-run-done { color: var(--text); }
+.ideate-focus { font-style: italic; }
+.ideate-pulse { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--accent); animation: ideate-pulse 1.2s ease-in-out infinite; }
+@keyframes ideate-pulse { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } }
+@media (prefers-reduced-motion: reduce) { .ideate-pulse { animation: none; } }
+
+.ideate-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr)); gap: 1rem; }
+.ideate-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 0.5rem; }
+.ideate-card.is-starred { border-color: var(--star); }
+.ideate-card-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.ideate-card-meta { display: flex; gap: 0.5rem; align-items: center; }
+.ideate-chip { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; background: var(--surface-2); color: var(--muted); border-radius: 999px; padding: 0.15rem 0.6rem; }
+.ideate-conf { font-variant-numeric: tabular-nums; font-size: 0.85rem; color: var(--muted); }
+.ideate-star { background: transparent; border: 0; font-size: 1.4rem; line-height: 1; color: var(--muted); padding: 0.1rem 0.3rem; border-radius: 6px; }
+.ideate-star:hover, .ideate-star.is-on { color: var(--star); }
+.ideate-card h3 { margin: 0; }
+.ideate-hook { margin: 0; }
+.ideate-whynow { margin: 0; font-size: 0.92rem; color: var(--muted); }
+.ideate-details summary { cursor: pointer; color: var(--accent); font-size: 0.92rem; }
+.ideate-details > * + * { margin-top: 0.4rem; }
+.ideate-details ul, .ideate-details ol { margin: 0.2rem 0 0; padding-left: 1.2rem; }
+.ideate-details p { margin: 0; }
+.ideate-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.ideate-tag { font-size: 0.8rem; color: var(--muted); }
+.ideate-evidence { font-size: 0.88rem; border-top: 1px solid var(--border); padding-top: 0.5rem; }
+.ideate-evidence ul { margin: 0.2rem 0 0; padding-left: 1.1rem; }
+.ideate-snippet { color: var(--muted); }
+.ideate-note { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.88rem; color: var(--muted); }
+
+.ideate-form { display: grid; gap: 0.9rem; max-width: 44rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin: 1rem 0 1.5rem; }
+.ideate-form label, .ideate-form fieldset { display: flex; flex-direction: column; gap: 0.3rem; border: 0; padding: 0; margin: 0; }
+.ideate-form label > span, .ideate-form legend { font-size: 0.88rem; font-weight: 600; color: var(--muted); padding: 0; }
+.ideate-checks { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; }
+.ideate-check { flex-direction: row !important; align-items: center; gap: 0.4rem !important; }
+.ideate-check input { width: auto; }
+.ideate-check span { font-weight: 400 !important; color: var(--text) !important; }
+.ideate-actions { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+
+.ideate-source-group { margin-top: 1.25rem; }
+.ideate-source-group h3 .ideate-muted { font-weight: 400; font-size: 0.88rem; }
+.ideate-source-list { list-style: none; padding: 0; margin: 0.5rem 0 0; display: grid; gap: 0.5rem; }
+.ideate-source-list li { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.7rem 0.9rem; word-break: break-word; }

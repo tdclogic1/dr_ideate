@@ -14,11 +14,16 @@ export type ProfileInput = {
 export type SourceInput = { url: string; title?: string; kind: SourceKind; notes?: string };
 
 export const IDEAS_PER_RUN = 8;
-export const DEFAULT_AGENT_KEY = "agent:agency-researcher";
-export const DEFAULT_SKILL = "desk-research";
-export const DEFAULT_MAX_TOKENS = 6000;
+export const DEFAULT_MODEL = "claude-opus-5-5";
 
-/** JSON schema handed to the gateway as `outputSchema`; the parser re-validates regardless. */
+export const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
+export type Effort = (typeof EFFORTS)[number];
+export const DEFAULT_EFFORT: Effort = "medium";
+export function isEffort(x: string): x is Effort {
+  return (EFFORTS as readonly string[]).includes(x);
+}
+
+/** JSON schema the reply is asked to follow; the parser re-validates regardless. */
 export const IDEA_OUTPUT_SCHEMA = {
   type: "object",
   required: ["ideas"],

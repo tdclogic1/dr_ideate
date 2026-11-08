@@ -1,5 +1,5 @@
 // Pure parser for the model's reply — defensive, because a 200 from the
-// gateway can still be prose, fenced JSON, or a partial object.
+// model reply can still be prose, fenced JSON, or a partial object.
 import { isIdeaFormat, type IdeaFormat } from "./enums";
 
 export type ParsedEvidence = { url: string; title?: string; snippet?: string };
@@ -18,11 +18,14 @@ export type ParsedIdea = {
 };
 export type ParseResult = { ideas: ParsedIdea[]; problems: string[] };
 
-/** Strip markdown fences and return the outermost {...} span, or null. */
+/** Strip markdown fences and return the outermost {...} or [...] span, or null. */
 export function extractJson(text: string): string | null {
   const unfenced = text.replace(/```(?:json)?\s*([\s\S]*?)```/gi, "$1");
-  const start = unfenced.indexOf("{");
-  const end = unfenced.lastIndexOf("}");
+  const obj = unfenced.indexOf("{");
+  const arr = unfenced.indexOf("[");
+  const startsWithArray = arr !== -1 && (obj === -1 || arr < obj);
+  const start = startsWithArray ? arr : obj;
+  const end = unfenced.lastIndexOf(startsWithArray ? "]" : "}");
   if (start === -1 || end === -1 || end <= start) return null;
   return unfenced.slice(start, end + 1);
 }

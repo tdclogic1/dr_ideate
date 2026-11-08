@@ -1,10 +1,8 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
-// The honest-degrade rule at the top of the tree (from dr_agency 672a-G8,
-// 2026-09-16). Under build-vs-activate a bundle is routinely newer than its
-// Convex deployment: the first query for a function the server lacks throws in
-// render, and without a boundary React unmounts everything. A blank page tells
-// a person nothing; this names the function, says why, and says what to do.
+// Error boundary at the top of the tree. A browser bundle can be newer than its
+// Convex deployment; the first query for a missing function would otherwise
+// unmount everything. This names the function and says what to do.
 type Props = { children: ReactNode; fallback?: (error: Error, reset: () => void) => ReactNode; onError?: (error: Error) => void };
 type State = { error: Error | null };
 
@@ -14,7 +12,7 @@ export function explainError(e: Error): { title: string; detail: string; fix: st
     return {
       title: `The app is newer than its deployment: ${m[1]} is not on the server yet.`,
       detail: "The browser bundle was built from code that has not been pushed to this Convex deployment.",
-      fix: "From the canonical checkout, run `npx convex dev` (dev) or `npx convex deploy` (prod), then reload.",
+      fix: "Run `npx convex dev` (dev) or `npx convex deploy` (prod), then reload.",
     };
   }
   if (/not signed in/.test(e.message)) return { title: "Your session ended.", detail: e.message, fix: "Sign in again." };
