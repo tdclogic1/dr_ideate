@@ -1,0 +1,24 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        # Pin Node so a mismatch fails here, loudly. Needs the app's build image set
+        # to "Amazon Linux:2023" (console → Build settings → Build image settings):
+        # the legacy Amazon Linux 2 image cannot run Node 20+ (GLIBC_2.28 not found).
+        # Checked fleet-wide by scripts/audit-amplify-build.mjs.
+        - nvm install 22 && nvm use 22
+        - node --version
+        - npm ci
+    build:
+      commands:
+        # Static-only hosting: Convex functions deploy separately from the
+        # canonical checkout. CONVEX_DEPLOY_KEY is the ONLY Amplify variable.
+        - npx convex deploy --cmd 'npm run build'
+  artifacts:
+    baseDirectory: dist
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - node_modules/**/*
