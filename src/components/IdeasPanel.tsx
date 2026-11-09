@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { friendlyError, useIdeas, useProfile, useRuns, useStartRun, type Run } from "../data/ideate";
+import { friendlyError, useApiKey, useIdeas, useProfile, useRuns, useStartRun, type Run } from "../data/ideate";
 import { IdeaCard } from "./IdeaCard";
 
 function when(ts: number): string {
@@ -34,6 +34,7 @@ export function IdeasPanel({ onGoToPreferences }: { onGoToPreferences: () => voi
   const ideas = useIdeas();
   const runs = useRuns();
   const start = useStartRun();
+  const [apiKey, setApiKey] = useApiKey();
   const [focus, setFocus] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,17 +42,14 @@ export function IdeasPanel({ onGoToPreferences }: { onGoToPreferences: () => voi
   const latest = runs?.[0];
   const inProgress = latest ? latest.status === "queued" || latest.status === "running" : false;
 
-  async function run() {
+  function run() {
     setError(null);
     setBusy(true);
-    try {
-      await start({ focus: focus.trim() || undefined });
-      setFocus("");
-    } catch (e) {
-      setError(friendlyError(e));
-    } finally {
-      setBusy(false);
-    }
+    // The action runs the whole research (minutes); progress shows through the run row,
+    // so the button is released as soon as the request is accepted.
+    start({ apiKey, focus: focus.trim() || undefined }).catch((e: unknown) => setError(friendlyError(e)));
+    setFocus("");
+    setTimeout(() => setBusy(false), 800);
   }
 
   return (
@@ -59,11 +57,23 @@ export function IdeasPanel({ onGoToPreferences }: { onGoToPreferences: () => voi
       <h2 id="ideas-h" className="visually-hidden">
         Ideas
       </h2>
+      <label className="ideate-keyrow">
+        <span>Your Anthropic API key</span>
+        <input
+          type="password"
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          placeholder="sk-ant-…"
+          autoComplete="off"
+          spellCheck={false}
+        />
+        <small className="ideate-muted">Stays in this browser. Sent only with each run; never saved to the database.</small>
+      </label>
       <form
         className="ideate-runbar"
         onSubmit={(e) => {
           e.preventDefault();
-          void run();
+          run();
         }}
       >
         <input
@@ -73,7 +83,7 @@ export function IdeasPanel({ onGoToPreferences }: { onGoToPreferences: () => voi
           placeholder="Optional focus for this run — e.g. “shorts only” or “AI tools for teachers”"
           aria-label="Focus for this research run"
         />
-        <button type="submit" className="ideate-primary" disabled={busy || inProgress || profile === null || profile === undefined}>
+        <button type="submit" className="ideate-primary" disabled={busy || inProgress || !apiKey.trim() || profile === null || profile === undefined}>
           {inProgress ? "Researching…" : "Research now"}
         </button>
       </form>

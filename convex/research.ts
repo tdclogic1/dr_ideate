@@ -1,11 +1,13 @@
 "use node";
 // The research run: one Claude call with web search + web fetch, parsed into idea rows.
-// The API key lives on the Convex deployment (npx convex env set ANTHROPIC_API_KEY …),
-// never in this repo or the browser.
+// Bring your own key: the browser sends the Anthropic API key with each run. It is held
+// in this action's memory only — never written to the database or to this repo.
+// ANTHROPIC_API_KEY on the Convex deployment is an optional fallback for a private deploy.
 import Anthropic from "@anthropic-ai/sdk";
-import { internalAction } from "./_generated/server";
+import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { parseIdeas } from "./lib/ideas";
 import { DEFAULT_EFFORT, DEFAULT_MODEL, buildResearchPrompt, type Effort, isEffort } from "./lib/prompt";
 import type { RunContext } from "./runs";
@@ -13,15 +15,17 @@ import type { RunContext } from "./runs";
 const SYSTEM =
   "You are a YouTube content strategist who researches before recommending. Use web search to find what is current, and web fetch to read the creator's sources. Reply with the JSON object requested and nothing else.";
 
-export const execute = internalAction({
-  args: { runId: v.id("researchRuns") },
-  handler: async (ctx, { runId }): Promise<void> => {
+export const start = action({
+  args: { apiKey: v.string(), focus: v.optional(v.string()) },
+  handler: async (ctx, { apiKey, focus }): Promise<null> => {
     // Explicit return types break the type cycle runs.ts → api → research.ts → runs.ts.
-    const fail = async (error: string): Promise<void> => {
+    const runId: Id<"researchRuns"> = await ctx.runMutation(internal.runs.start, { focus });
+    const fail = async (error: string): Promise<null> => {
       await ctx.runMutation(internal.runs.fail, { runId, error });
+      return null;
     };
     const c: RunContext = await ctx.runQuery(internal.runs.loadContext, { runId });
-    if (!c.run) return;
+    if (!c.run) return null;
     if (!c.profile) return fail("No preferences saved yet.");
 
     const model = process.env.IDEATE_MODEL ?? DEFAULT_MODEL;
@@ -29,10 +33,9 @@ export const execute = internalAction({
     const effort: Effort = effortEnv && isEffort(effortEnv) ? effortEnv : DEFAULT_EFFORT;
     await ctx.runMutation(internal.runs.markRunning, { runId, model });
 
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return fail("ANTHROPIC_API_KEY is not set on the Convex deployment. Run: npx convex env set ANTHROPIC_API_KEY <key>");
-    }
-    const client = new Anthropic();
+    const key = apiKey.trim() || process.env.ANTHROPIC_API_KEY;
+    if (!key) return fail("No API key. Paste your Anthropic API key above and run again.");
+    const client = new Anthropic({ apiKey: key });
 
     try {
       const prompt = buildResearchPrompt(c.profile, c.sources, c.run.focus);
@@ -73,11 +76,12 @@ export const execute = internalAction({
       const parsed = parseIdeas(text);
       if (parsed.ideas.length === 0) return fail(`no ideas could be read from the reply: ${parsed.problems.join("; ")}`);
       await ctx.runMutation(internal.runs.complete, { runId, ideas: parsed.ideas, model: message.model, problems: parsed.problems });
+      return null;
     } catch (e) {
-      if (e instanceof Anthropic.AuthenticationError) return fail("ANTHROPIC_API_KEY was rejected — check the key on the Convex deployment");
+      if (e instanceof Anthropic.AuthenticationError) return fail("the API key was rejected — check it and try again");
       if (e instanceof Anthropic.RateLimitError) return fail("rate limited by the API — try again in a minute");
       if (e instanceof Anthropic.APIError) return fail(`API error ${e.status ?? ""}: ${e.message}`.trim());
-      await fail(e instanceof Error ? e.message : String(e));
+      return fail(e instanceof Error ? e.message : String(e));
     }
   },
 });

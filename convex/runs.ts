@@ -1,5 +1,4 @@
-import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { internalMutation, internalQuery, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { OWNER_KEY } from "./lib/owner";
@@ -13,7 +12,8 @@ export const list = query({
     ctx.db.query("researchRuns").withIndex("by_owner_createdAt", (q) => q.eq("ownerKey", OWNER_KEY)).order("desc").take(20),
 });
 
-export const start = mutation({
+/** Creates the run row; research.start (the public action) calls this, then does the work. */
+export const start = internalMutation({
   args: { focus: v.optional(v.string()) },
   handler: async (ctx, args): Promise<Id<"researchRuns">> => {
     for (const status of ["queued", "running"] as const) {
@@ -37,7 +37,6 @@ export const start = mutation({
       createdAt: now,
       updatedAt: now,
     });
-    await ctx.scheduler.runAfter(0, internal.research.execute, { runId });
     return runId;
   },
 });

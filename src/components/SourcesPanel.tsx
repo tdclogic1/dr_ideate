@@ -3,6 +3,7 @@ import type { SourceKind } from "../../convex/lib/enums";
 import { friendlyError, useAddSource, useRemoveSource, useSources, type Source } from "../data/ideate";
 
 const KIND_LABEL: Record<SourceKind, string> = { mine: "My own blog", followed: "Blog I follow" };
+const KIND_PLURAL: Record<SourceKind, string> = { mine: "My own blogs", followed: "Blogs I follow" };
 const KIND_HELP: Record<SourceKind, string> = {
   mine: "Read to learn your voice and what you have already covered.",
   followed: "Read as research input for fresh angles and trends.",
@@ -80,7 +81,7 @@ export function SourcesPanel() {
           return (
             <div key={k} className="ideate-source-group">
               <h3>
-                {KIND_LABEL[k]}s <span className="ideate-muted">· {KIND_HELP[k]}</span>
+                {KIND_PLURAL[k]} <span className="ideate-muted">· {KIND_HELP[k]}</span>
               </h3>
               {rows.length === 0 ? (
                 <p className="ideate-empty">None yet.</p>
